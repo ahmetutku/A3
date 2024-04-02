@@ -3,6 +3,7 @@
 -- Extra constraints:
 -- Assumptions:
 -- For the Reviews table, we assumed a reviewer can only review a submission once.
+-- test
 
 -- Drop and Create Schema
 DROP SCHEMA IF EXISTS A3Conference CASCADE;
