@@ -1,3 +1,9 @@
+-- Could not:
+-- Did not:
+-- Extra constraints:
+-- Assumptions:
+-- For the Reviews table, we assumed a reviewer can only review a submission once.
+
 -- Drop and Create Schema
 DROP SCHEMA IF EXISTS A3Conference CASCADE;
 CREATE SCHEMA A3Conference;
@@ -6,45 +12,64 @@ SET SEARCH_PATH TO A3Conference;
 -- Conferences Table
 CREATE TABLE Conferences (
     conference_id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    location VARCHAR(255) NOT NULL,
+    name TEXT NOT NULL,
+    location TEXT NOT NULL,
     conference_date DATE NOT NULL
 );
 
 -- Authors Table
 CREATE TABLE Authors (
     author_id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
     organization VARCHAR(255) NOT NULL
 );
 
 -- Submissions Table
 CREATE TABLE Submissions (
     submission_id SERIAL PRIMARY KEY,
-    conference_id INTEGER REFERENCES Conferences(conference_id),
-    title VARCHAR(255) NOT NULL,
-    submission_type VARCHAR(50) CHECK (submission_type IN ('Paper', 'Poster')),
-    status VARCHAR(50) CHECK (status IN ('Submitted', 'Accepted', 'Rejected')),
-    UNIQUE (title, submission_type, conference_id)
+    -- The conference at which the submission will be presented.
+    conference_id INTEGER NOT NULL,
+    -- The title of the event.
+    title TEXT NOT NULL,
+    -- The type of submission.
+    submission_type TEXT NOT NULL,
+    -- The submition status.
+    status VARCHAR(50) NOT NULL, -- status not specified in assignment.
+    FOREIGN KEY (conference_id) REFERENCES Conferences(conference_id),
+    UNIQUE (title, submission_type, conference_id),
+    CHECK (submission_type IN ('Paper', 'Poster')),
+    CHECK (status IN ('Submitted', 'Accepted', 'Rejected'))
 );
 
 -- Author_Submission Relationship Table
 CREATE TABLE Author_Submission (
-    author_id INTEGER REFERENCES Authors(author_id),
-    submission_id INTEGER REFERENCES Submissions(submission_id),
-    author_order INTEGER NOT NULL,
+    -- The author of a submission.
+    author_id INTEGER NOT NULL,
+    submission_id INTEGER NOT NULL,
+    -- The order in which the author name is presented on a paper.
+    -- The order is ascending.
+    -- ex: if the author_order = 1, that author will have his name appear first on the paper.
+    author_order INTEGER NOT NULL, -- this can be NULL if the submission is not a paper but a poster.
     PRIMARY KEY (author_id, submission_id),
+    FOREIGN KEY (author_id) REFERENCES Authors(author_id),
+    FOREIGN KEY (submission_id) REFERENCES Submissions(submission_id),
     UNIQUE (submission_id, author_order)
 );
 
 -- Reviews Table
 CREATE TABLE Reviews (
     review_id SERIAL PRIMARY KEY,
-    submission_id INTEGER REFERENCES Submissions(submission_id),
-    reviewer_id INTEGER REFERENCES Authors(author_id),
-    recommendation VARCHAR(50) CHECK (recommendation IN ('Accept', 'Reject'))
-    -- Additional constraints for complex rules will need to be implemented via triggers or application logic
+    -- The submission that is being reviewed.
+    submission_id INTEGER NOT NULL,
+    -- The author that is reviewing the submission.
+    reviewer_id INTEGER NOT NULL,
+    -- The recommendation the reviewer gave for the submission.
+    recommendation VARCHAR(50) CHECK (recommendation IN ('Accept', 'Reject')),
+    FOREIGN KEY (submission_id) REFERENCES Submissions(submission_id),
+    FOREIGN KEY (reviewer_id) REFERENCES Authors(author_id),
+    -- We assume a reviewer can review a submission only once.
+    UNIQUE (submission_id, reviewer_id)
 );
 
 -- Presentations Table
