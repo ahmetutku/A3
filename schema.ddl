@@ -3,7 +3,8 @@
 -- Extra constraints:
 -- Assumptions:
 -- For the Reviews table, we assumed a reviewer can only review a submission once.
--- test
+
+-- Create a people table as we have assumed that reviewers, session chairs, attendees and facilitator are all authors
 
 -- Drop and Create Schema
 DROP SCHEMA IF EXISTS A3Conference CASCADE;
@@ -23,7 +24,7 @@ CREATE TABLE Authors (
     author_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
-    organization VARCHAR(255) NOT NULL
+    organization TEXT NOT NULL
 );
 
 -- Submissions Table
@@ -38,7 +39,7 @@ CREATE TABLE Submissions (
     -- The submition status.
     status VARCHAR(50) NOT NULL, -- status not specified in assignment.
     FOREIGN KEY (conference_id) REFERENCES Conferences(conference_id),
-    UNIQUE (title, submission_type, conference_id),
+    UNIQUE (title, submission_type, conference_id), -- Constraints needs to be changed
     CHECK (submission_type IN ('Paper', 'Poster')),
     CHECK (status IN ('Submitted', 'Accepted', 'Rejected'))
 );
@@ -66,7 +67,7 @@ CREATE TABLE Reviews (
     -- The author that is reviewing the submission.
     reviewer_id INTEGER NOT NULL,
     -- The recommendation the reviewer gave for the submission.
-    recommendation VARCHAR(50) CHECK (recommendation IN ('Accept', 'Reject')),
+    recommendation TEXT CHECK (recommendation IN ('Accept', 'Reject')),
     FOREIGN KEY (submission_id) REFERENCES Submissions(submission_id),
     FOREIGN KEY (reviewer_id) REFERENCES Authors(author_id),
     -- We assume a reviewer can review a submission only once.
@@ -76,31 +77,51 @@ CREATE TABLE Reviews (
 -- Presentations Table
 CREATE TABLE Presentations (
     presentation_id SERIAL PRIMARY KEY,
-    submission_id INTEGER REFERENCES Submissions(submission_id),
-    presented_during VARCHAR(255) NOT NULL,
-    start_time TIMESTAMP NOT NULL,
-    end_time TIMESTAMP NOT NULL,
-    session_chair_id INTEGER REFERENCES Authors(author_id), --can be null for poster
-    -- Assuming session chair is an author who will not have a paper in the same session
-    CONSTRAINT fk_conference FOREIGN KEY (submission_id) REFERENCES Conferences(conference_id)
-    -- More constraints for checking overlaps and author's presentation rules might be needed
+    -- The submission presented in the presentation.
+    submission_id INTEGER NOT NULL,
+    presented_during TEXT NOT NULL, -- not sure what this is supposed to represent
+    -- The time at which the presentation of the submission starts.
+    start_time TIMESTAMP NOT NULL, -- Could this be NULL in the case where it is a "poster session"? -- Make this a key with other presentation presented in the same session if paper session.
+    -- The time at which the presentation of the submission ends.
+    end_time TIMESTAMP NOT NULL, -- Not specified in the assignment.
+    -- The session chair for the paper session.
+    -- The attribute can be NULL in the case this presentation is part of a poster session.
+    session_chair_id INTEGER,
+    FOREIGN KEY (session_chair_id) REFERENCES Authors(author_id),
+    FOREIGN KEY (submission_id) REFERENCES Submissions(submission_id),
+    -- Assuming session chair is an author who will not have a paper in the same session.
+    CONSTRAINT fk_conference FOREIGN KEY (submission_id) REFERENCES Conferences(conference_id), -- I think this FKC is wrong.
+    CHECK (start_time < end_time)
 );
 
 -- Registrations Table
 CREATE TABLE Registrations (
     registration_id SERIAL PRIMARY KEY,
-    attendee_id INTEGER REFERENCES Authors(author_id),
-    conference_id INTEGER REFERENCES Conferences(conference_id),
-    registration_type VARCHAR(50) CHECK (registration_type IN ('Regular', 'Student')),
-    fee DECIMAL(10,2) NOT NULL
+    -- The person that attends the conference.
+    attendee_id INTEGER NOT NULL,
+    conference_id INTEGER NOT NULL,
+    -- The type of  attendee (student or regular).
+    registration_type TEXT NOT NULL,
+    -- The registration fee to attend the conference.
+    fee DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (attendee_id) REFERENCES Authors(author_id),
+    FOREIGN KEY (conference_id) REFERENCES Conferences(conference_id),
+    CHECK (registration_type IN ('Regular', 'Student'))
+    -- Need a way to check that students pay the lower of both fees.
+    -- Need to be able to register to Workshops too or maybe create a new table for it?
 );
 
 -- Workshops Table
 CREATE TABLE Workshops (
     workshop_id SERIAL PRIMARY KEY,
-    conference_id INTEGER REFERENCES Conferences(conference_id),
-    title VARCHAR(255) NOT NULL,
-    facilitator_id INTEGER REFERENCES Authors(author_id)
+    -- The conference in which this workshop is held.
+    conference_id INTEGER NOT NULL,
+    -- The name of the workshop.
+    title TEXT NOT NULL,
+    -- The facilitator of the workshop.
+    facilitator_id INTEGER NOT NULL,
+    FOREIGN KEY (conference_id) REFERENCES Conferences(conference_id),
+    FOREIGN KEY (facilitator_id) REFERENCES Authors(author_id)
     -- Additional registration details for workshops would be required
 );
 
