@@ -44,15 +44,15 @@ SET SEARCH_PATH TO A3Conference;
 
 CREATE TABLE Organization (
     OrganizationID INT PRIMARY KEY,
-    Name VARCHAR(255),
-    ContactInfo VARCHAR(255)
+    Name TEXT,
+    ContactInfo TEXT
     -- Assumption: Each organization is unique and can be associated with multiple persons.
 );
 
 CREATE TABLE Person (
     PersonID INT PRIMARY KEY,
-    FullName VARCHAR(255),
-    Email VARCHAR(255) UNIQUE,
+    FullName TEXT,
+    Email TEXT UNIQUE,
     OrganizationID INT NOT NULL,
     FOREIGN KEY (OrganizationID) REFERENCES Organization(OrganizationID)
     -- Assumption: A person is uniquely identified by their ID and can belong to only one organization.
@@ -61,8 +61,8 @@ CREATE TABLE Person (
 
 CREATE TABLE Conference (
     ConferenceID INT PRIMARY KEY,
-    Name VARCHAR(255),
-    Location VARCHAR(255),
+    Name TEXT,
+    Location TEXT,
     StartDate DATE,
     EndDate DATE
     CHECK (StartDate < EndDate)
@@ -77,7 +77,7 @@ CREATE TABLE Session (
     SessionChairID INT,
     StartTime TIMESTAMP,
     EndTime TIMESTAMP,
-    Type VARCHAR(10),
+    Type TEXT,
     FOREIGN KEY (ConferenceID) REFERENCES Conference(ConferenceID),
     FOREIGN KEY (SessionChairID) REFERENCES Person(PersonID),
     CHECK (Type IN ('Paper', 'Poster')),
@@ -95,9 +95,9 @@ CREATE TABLE Session (
 
 CREATE TABLE Submission (
     SubmissionID INT PRIMARY KEY,
-    Title VARCHAR(255),
-    Type VARCHAR(10),
-    Decision VARCHAR(10),
+    Title TEXT,
+    Type TEXT,
+    Decision TEXT,
     SessionID INT NULL,
     FOREIGN KEY (SessionID) REFERENCES Session(SessionID),
     CHECK (Type IN ('Paper', 'Poster')),
@@ -126,7 +126,7 @@ CREATE TABLE Review (
     ReviewID INT PRIMARY KEY,
     SubmissionID INT,
     ReviewerID INT,
-    Recommendation VARCHAR(10) CHECK (Recommendation IN ('Accept', 'Reject')),
+    Recommendation TEXT CHECK (Recommendation IN ('Accept', 'Reject')),
     HasConflict BOOLEAN NOT NULL,
     FOREIGN KEY (SubmissionID) REFERENCES Submission(SubmissionID),
     FOREIGN KEY (ReviewerID) REFERENCES Person(PersonID)
@@ -165,7 +165,7 @@ CREATE TABLE Presentation (
 CREATE TABLE Workshop (
     WorkshopID INT PRIMARY KEY,
     ConferenceID INT,
-    Title VARCHAR(255),
+    Title TEXT,
     Fee DECIMAL(10, 2), -- Assuming fees are monetary values with 2 decimal places
     FOREIGN KEY (ConferenceID) REFERENCES Conference(ConferenceID)
     -- Removed FacilitatorID to support multiple facilitators through a linking table.
@@ -212,7 +212,7 @@ CREATE TABLE ConferenceCommittee (
     CommitteeID INT PRIMARY KEY,
     ConferenceID INT,
     MemberID INT,
-    Role VARCHAR(255),
+    Role TEXT,
     FOREIGN KEY (ConferenceID) REFERENCES Conference(ConferenceID),
     FOREIGN KEY (MemberID) REFERENCES Person(PersonID)
     -- Constraint: Chairs must have been on the committee twice before.
