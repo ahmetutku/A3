@@ -1,9 +1,40 @@
--- Could not:
+--Overview:
+
+-- Could no ensure: (most of these would require a trigger or more logical operations)
+        -- SessionChair must be an attendee not presenting in this session.
+        -- SessionChair must be an attendee not presenting in this session.
+        -- Session times don't overlap with other sessions within the same period
+        -- Each submission of paper having one author as a reviewer
+        -- Session start and end times are within the conference duration, necessitating external validation.
+        -- A submission's decision progresses from 'Pending' to either 'Accept' or 'Reject'.
+        -- Tracking how many Acceptions/ Rejections a submission has
+        -- Only assigning 3 people to decide for the submision
+        -- Not assigning authors their own submission
+        -- not allowing new submission that has been accepted before without a trigger
+        -- Multiple posters being presented in the same timeslot
+        -- Chairs must have been on the committee twice before.
+        -- Chairs are required to have prior committee experience
+        -- Each submission hacing at least one registered person
+        -- Students having a different fee than the rest
+        -- Submission not being accepted if no reviewer reccomended accept
+        -- An author not having two presentations at the same time with the exception that it is one paper and one poster both in which they are not the sole contributor
+
+
 -- Did not:
 -- Extra constraints:
+    -- Sessions, including paper and poster sessions, are well-defined time blocks that can accommodate presentations with specific start and end times.
 -- Assumptions:
--- For the Reviews table, we assumed a reviewer can only review a submission once.
+    --Every attendee needs tp pay a fee
+    -- For the Reviews table, we assumed a reviewer can only review a submission once.
+    -- An author cannot review his or her paper
+    -- This schema assumes either individual time slots for posters or a collective time block entry.
+    -- Workshops are specialized sessions within a conference, facilitated by one or more persons.
+    -- Workshops can have multiple faciliatators
+    -- Assuming fees are monetary values with 2 decimal places.
+    -- A reviewer can accept the submission whilst declaring a conflict
 
+
+--did we do this:
 -- Create a people table as we have assumed that reviewers, session chairs, attendees and facilitator are all authors
 
 -- Drop and Create Schema
@@ -11,372 +42,181 @@ DROP SCHEMA IF EXISTS A3Conference CASCADE;
 CREATE SCHEMA A3Conference;
 SET SEARCH_PATH TO A3Conference;
 
--- Conferences Table
-CREATE TABLE Conferences (
-    conference_id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    location TEXT NOT NULL,
-    conference_date DATE NOT NULL
+CREATE TABLE Organization (
+    OrganizationID INT PRIMARY KEY,
+    Name VARCHAR(255),
+    ContactInfo VARCHAR(255)
+    -- Assumption: Each organization is unique and can be associated with multiple persons.
 );
 
--- Authors Table
-CREATE TABLE Authors (
-    author_id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    organization TEXT NOT NULL
+CREATE TABLE Person (
+    PersonID INT PRIMARY KEY,
+    FullName VARCHAR(255),
+    Email VARCHAR(255) UNIQUE,
+    OrganizationID INT NOT NULL,
+    FOREIGN KEY (OrganizationID) REFERENCES Organization(OrganizationID)
+    -- Assumption: A person is uniquely identified by their ID and can belong to only one organization.
+    -- Assumption: Each person has a unique email address.
 );
 
--- Submissions Table
-CREATE TABLE Submissions (
-    submission_id SERIAL PRIMARY KEY,
-    -- The conference at which the submission will be presented.
-    conference_id INTEGER NOT NULL,
-    -- The title of the event.
-    title TEXT NOT NULL,
-    -- The type of submission.
-    submission_type TEXT NOT NULL,
-    -- The submition status.
-    status VARCHAR(50) NOT NULL, -- status not specified in assignment.
-    FOREIGN KEY (conference_id) REFERENCES Conferences(conference_id),
-    UNIQUE (title, submission_type, conference_id), -- Constraints needs to be changed
-    CHECK (submission_type IN ('Paper', 'Poster')),
-    CHECK (status IN ('Submitted', 'Accepted', 'Rejected'))
-);
-
--- Author_Submission Relationship Table
-CREATE TABLE Author_Submission (
-    -- The author of a submission.
-    author_id INTEGER NOT NULL,
-    submission_id INTEGER NOT NULL,
-    -- The order in which the author name is presented on a paper.
-    -- The order is ascending.
-    -- ex: if the author_order = 1, that author will have his name appear first on the paper.
-    author_order INTEGER NOT NULL, -- this can be NULL if the submission is not a paper but a poster.
-    PRIMARY KEY (author_id, submission_id),
-    FOREIGN KEY (author_id) REFERENCES Authors(author_id),
-    FOREIGN KEY (submission_id) REFERENCES Submissions(submission_id),
-    UNIQUE (submission_id, author_order)
-);
-
--- Reviews Table
-CREATE TABLE Reviews (
-    review_id SERIAL PRIMARY KEY,
-    -- The submission that is being reviewed.
-    submission_id INTEGER NOT NULL,
-    -- The author that is reviewing the submission.
-    reviewer_id INTEGER NOT NULL,
-    -- The recommendation the reviewer gave for the submission.
-    recommendation TEXT CHECK (recommendation IN ('Accept', 'Reject')),
-    FOREIGN KEY (submission_id) REFERENCES Submissions(submission_id),
-    FOREIGN KEY (reviewer_id) REFERENCES Authors(author_id),
-    -- We assume a reviewer can review a submission only once.
-    UNIQUE (submission_id, reviewer_id)
-);
-
--- Presentations Table
-CREATE TABLE Presentations (
-    presentation_id SERIAL PRIMARY KEY,
-    -- The submission presented in the presentation.
-    submission_id INTEGER NOT NULL,
-    presented_during TEXT NOT NULL, -- not sure what this is supposed to represent
-    -- The time at which the presentation of the submission starts.
-    start_time TIMESTAMP NOT NULL, -- Could this be NULL in the case where it is a "poster session"? -- Make this a key with other presentation presented in the same session if paper session.
-    -- The time at which the presentation of the submission ends.
-    end_time TIMESTAMP NOT NULL, -- Not specified in the assignment.
-    -- The session chair for the paper session.
-    -- The attribute can be NULL in the case this presentation is part of a poster session.
-    session_chair_id INTEGER,
-    FOREIGN KEY (session_chair_id) REFERENCES Authors(author_id),
-    FOREIGN KEY (submission_id) REFERENCES Submissions(submission_id),
-    -- Assuming session chair is an author who will not have a paper in the same session.
-    CONSTRAINT fk_conference FOREIGN KEY (submission_id) REFERENCES Conferences(conference_id), -- I think this FKC is wrong.
-    CHECK (start_time < end_time)
-);
-
--- Registrations Table
-CREATE TABLE Registrations (
-    registration_id SERIAL PRIMARY KEY,
-    -- The person that attends the conference.
-    attendee_id INTEGER NOT NULL,
-    conference_id INTEGER NOT NULL,
-    -- The type of  attendee (student or regular).
-    registration_type TEXT NOT NULL,
-    -- The registration fee to attend the conference.
-    fee DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (attendee_id) REFERENCES Authors(author_id),
-    FOREIGN KEY (conference_id) REFERENCES Conferences(conference_id),
-    CHECK (registration_type IN ('Regular', 'Student'))
-    -- Need a way to check that students pay the lower of both fees.
-    -- Need to be able to register to Workshops too or maybe create a new table for it?
-);
-
--- Workshops Table
-CREATE TABLE Workshops (
-    workshop_id SERIAL PRIMARY KEY,
-    -- The conference in which this workshop is held.
-    conference_id INTEGER NOT NULL,
-    -- The name of the workshop.
-    title TEXT NOT NULL,
-    -- The facilitator of the workshop.
-    facilitator_id INTEGER NOT NULL,
-    FOREIGN KEY (conference_id) REFERENCES Conferences(conference_id),
-    FOREIGN KEY (facilitator_id) REFERENCES Authors(author_id)
-    -- Additional registration details for workshops would be required
-);
-
--- Organizing Committees Table
-CREATE TABLE OrganizingCommittees (
-    committee_id SERIAL PRIMARY KEY,
-    conference_id INTEGER REFERENCES Conferences(conference_id),
-    member_id INTEGER REFERENCES Authors(author_id),
-    role VARCHAR(255),
-    -- Constraints for role and other rules would be needed
-    UNIQUE (conference_id, member_id)
-);
-
--- Conference Chairs Table
-CREATE TABLE ConferenceChairs (
-    chair_id INTEGER REFERENCES Authors(author_id),
-    conference_id INTEGER REFERENCES Conferences(conference_id),
-    tenure INTEGER CHECK (tenure >= 0),
-    PRIMARY KEY (chair_id, conference_id)
-    -- Assuming tenure is the number of times they have been on the committee
-    -- Additional logic for enforcing the "at least twice" rule might be needed
+CREATE TABLE Conference (
+    ConferenceID INT PRIMARY KEY,
+    Name VARCHAR(255),
+    Location VARCHAR(255),
+    StartDate DATE,
+    EndDate DATE
+    CHECK (StartDate < EndDate)
+    -- Assumption: Each conference is a unique event with a distinct name, location, and time frame.
 );
 
 
---Triggers
---A) For Review
--- Additional tables and relationships would be defined as needed based on the requirements
--- Check if reviewer is also an author of the submission
-    CREATE FUNCTION check_reviewer_not_author() RETURNS TRIGGER AS $$
-    BEGIN
-        -- Check if reviewer is also an author of the submission
-        IF EXISTS (
-            SELECT 1
-            FROM Author_Submission
-            WHERE submission_id = NEW.submission_id
-            AND author_id = NEW.reviewer_id
-        ) THEN
-            RAISE EXCEPTION 'Reviewers cannot review their own submissions.';
-        END IF;
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
 
-    CREATE TRIGGER trg_check_reviewer_not_author
-    BEFORE INSERT OR UPDATE ON Reviews
-    FOR EACH ROW
-    EXECUTE FUNCTION check_reviewer_not_author();
+CREATE TABLE Session (
+    SessionID INT PRIMARY KEY,
+    ConferenceID INT,
+    SessionChairID INT,
+    StartTime TIMESTAMP,
+    EndTime TIMESTAMP,
+    Type VARCHAR(10),
+    FOREIGN KEY (ConferenceID) REFERENCES Conference(ConferenceID),
+    FOREIGN KEY (SessionChairID) REFERENCES Person(PersonID),
+    CHECK (Type IN ('Paper', 'Poster')),
+    CHECK (StartTime < EndTime)
+    -- Constraint: SessionChair must be an attendee not presenting in this session.
+    -- This cannot be directly enforced without a trigger.
 
--- Check if reviewer is a co-author with any of the authors of the submission
-    CREATE FUNCTION check_co_author_conflict() RETURNS TRIGGER AS $$
-    BEGIN
-        -- Check if reviewer is a co-author with any of the authors of the submission
-        IF EXISTS (
-            SELECT 1
-            FROM Author_Submission AS1
-            JOIN Author_Submission AS2 ON AS1.submission_id = AS2.submission_id
-            WHERE AS1.author_id = NEW.reviewer_id
-            AND AS2.author_id != NEW.reviewer_id
-            AND AS2.submission_id = NEW.submission_id
-        ) THEN
-            RAISE EXCEPTION 'Reviewers cannot review submissions from their co-authors.';
-        END IF;
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
+    -- Cannot enforce that the session chair is not a presenting author in the session without a trigger.
+    -- Cannot ensure session times don't overlap with other sessions within the same period
 
-    CREATE TRIGGER trg_check_co_author_conflict
-    BEFORE INSERT OR UPDATE ON Reviews
-    FOR EACH ROW
-    EXECUTE FUNCTION check_co_author_conflict();
+    -- Assumption: Sessions are specific segments within a conference, categorized as either 'Paper' or 'Poster'.
+    -- Constraint: Each session is chaired by a person who is not presenting in that session, requiring application logic to ensure.
+    -- Constraint: Session start and end times are within the conference duration, necessitating external validation.
+);
 
--- Check if reviewer and authors of the submission are from the same organization
-    CREATE FUNCTION check_organization_conflict() RETURNS TRIGGER AS $$
-    BEGIN
-        -- Check if reviewer and authors of the submission are from the same organization
-        IF EXISTS (
-            SELECT 1
-            FROM Authors A
-            JOIN Author_Submission ASUB ON A.author_id = ASUB.author_id
-            WHERE ASUB.submission_id = NEW.submission_id
-            AND A.organization = (SELECT organization FROM Authors WHERE author_id = NEW.reviewer_id)
-        ) THEN
-            RAISE EXCEPTION 'Reviewers cannot review submissions from their organization.';
-        END IF;
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
+CREATE TABLE Submission (
+    SubmissionID INT PRIMARY KEY,
+    Title VARCHAR(255),
+    Type VARCHAR(10),
+    Decision VARCHAR(10),
+    SessionID INT NULL,
+    FOREIGN KEY (SessionID) REFERENCES Session(SessionID),
+    CHECK (Type IN ('Paper', 'Poster')),
+    CHECK (Decision IN ('Pending', 'Accept', 'Reject'))
+    -- Assumption: Submissions are proposals for conference content, reviewed and either accepted or rejected.
+    -- Constraint: A submission's decision progresses from 'Pending' to either 'Accept' or 'Reject'.
 
-    CREATE TRIGGER trg_check_organization_conflict
-    BEFORE INSERT OR UPDATE ON Reviews
-    FOR EACH ROW
-    EXECUTE FUNCTION check_organization_conflict();
+    -- Cannot prevent duplicate submissions (identical title, type, and authors) without a trigger.
 
-    CREATE TABLE DeclaredConflicts (
-        reviewer_id INTEGER REFERENCES Authors(author_id),
-        submission_id INTEGER REFERENCES Submissions(submission_id),
-        PRIMARY KEY (reviewer_id, submission_id)
-    );
--- Check if there are declared conflicts for the reviewer and submission
-    CREATE FUNCTION check_additional_conflicts() RETURNS TRIGGER AS $$
-    BEGIN
-        -- Check if there are declared conflicts for the reviewer and submission
-        IF EXISTS (
-            SELECT 1
-            FROM DeclaredConflicts
-            WHERE reviewer_id = NEW.reviewer_id
-            AND submission_id = NEW.submission_id
-        ) THEN
-            RAISE EXCEPTION 'Reviewers have declared a conflict with this submission.';
-        END IF;
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
+    -- Cannot make sure not allowing new submission that has been accepted before without a trigger
+);
 
-    CREATE TRIGGER trg_check_additional_conflicts
-    BEFORE INSERT OR UPDATE ON Reviews
-    FOR EACH ROW
-    EXECUTE FUNCTION check_additional_conflicts();
+CREATE TABLE Authorship (
+    SubmissionID INT,
+    AuthorID INT,
+    AuthorOrder INT,
+    FOREIGN KEY (SubmissionID) REFERENCES Submission(SubmissionID),
+    FOREIGN KEY (AuthorID) REFERENCES Person(PersonID),
+    PRIMARY KEY (SubmissionID, AuthorID),
+    UNIQUE (SubmissionID, AuthorOrder)
+    -- Assumption: Submissions can have multiple authors, with the order of authorship being significant.
+    -- Constraint: Each author is uniquely associated with a submission but can appear in different submissions.
+);
+
+CREATE TABLE Review (
+    ReviewID INT PRIMARY KEY,
+    SubmissionID INT,
+    ReviewerID INT,
+    Recommendation VARCHAR(10) CHECK (Recommendation IN ('Accept', 'Reject')),
+    HasConflict BOOLEAN NOT NULL,
+    FOREIGN KEY (SubmissionID) REFERENCES Submission(SubmissionID),
+    FOREIGN KEY (ReviewerID) REFERENCES Person(PersonID)
+    -- Constraint: Reviewers cannot review their own or co-authors' submissions.
+    -- This check cannot be implemented directly in the schema without a trigger.
+    -- The Recommendation column now accepts 'Accept' or 'Reject' as text.
+    -- The HasConflict boolean indicates if there are additional conflicts beyond co-authorship or organizational conflicts.
+
+    -- Assumption: Reviews are assessments of submissions, recommending acceptance or rejection.
+    -- Assumption: The HasConflict flag is manually set based on additional conflict checks.
+    -- Constraint: Reviewers cannot review their own submissions or those of their co-authors.
+    -- Note: Enforcing the no self-review or co-author review rule requires application logic or manual validation, as SQL constraints cannot assess relational data complexities for this rule.
+);
 
 
---b) Submissitions
---Check ifa subission has been checked three times
-    CREATE OR REPLACE FUNCTION fn_adjust_submission_status() RETURNS TRIGGER AS $$
-    DECLARE
-        review_count INTEGER;
-        accept_count INTEGER;
-    BEGIN
-        -- Count the total number of reviews for the submission
-        SELECT COUNT(*) INTO review_count
-        FROM Reviews
-        WHERE submission_id = NEW.submission_id;
+CREATE TABLE Presentation (
+    PresentationID INT PRIMARY KEY, -- Unique identifier for each presentation.
+    SubmissionID INT, -- Links the presentation to a specific submission (paper or poster).
+    SessionID INT, -- Indicates which session the presentation belongs to.
+    StartTime TIMESTAMP, -- Specific start time of the presentation within the session.
+    EndTime TIMESTAMP, -- Specific end time of the presentation within the session.
+    FOREIGN KEY (SubmissionID) REFERENCES Submission(SubmissionID),
+    FOREIGN KEY (SessionID) REFERENCES Session(SessionID),
+    UNIQUE (SessionID, StartTime), -- Ensures no overlapping presentations within the same session.
+    CHECK (StartTime < EndTime) -- Ensures that the start time is before the end time.
+    -- Assumption: Sessions, including paper and poster sessions, are well-defined time blocks that can accommodate presentations with specific start and end times.
+    -- Assumption: The scheduling does not account for breaks or transitions between presentations; those must be managed externally or factored into the timing.
+    -- Constraint: A single session cannot have two presentations that start at the same time, preventing scheduling conflicts within a session.
+    -- Constraint: Every presentation must have a defined duration, with the end time always after the start time.
+    -- Note: For poster sessions where multiple posters may be presented simultaneously throughout the session, the handling of start and end times may need to be adapted. 
+    -- This schema assumes either individual time slots for posters or a collective time block entry.
+    -- Note: This table does not explicitly handle scheduling constraints related to presenter availability or room capacity; such considerations are outside the scope of this simple scheduling mechanism.
+);
 
-        IF review_count < 3 THEN
-            -- Automatically set the status to 'Submitted' if there are less than three reviews
-            NEW.status := 'Submitted';
-            RETURN NEW;
-        ELSE
-            -- Count the number of 'Accept' recommendations for the submission
-            SELECT COUNT(*) INTO accept_count
-            FROM Reviews
-            WHERE submission_id = NEW.submission_id AND recommendation = 'Accept';
 
-            -- Enforce at least one 'Accept' recommendation for 'Accepted' status
-            IF accept_count < 2 THEN
-                NEW.status := 'Rejected';
-            ELSE
-                NEW.status := 'Accepted';
-            END IF;
+CREATE TABLE Workshop (
+    WorkshopID INT PRIMARY KEY,
+    ConferenceID INT,
+    Title VARCHAR(255),
+    Fee DECIMAL(10, 2), -- Assuming fees are monetary values with 2 decimal places
+    FOREIGN KEY (ConferenceID) REFERENCES Conference(ConferenceID)
+    -- Removed FacilitatorID to support multiple facilitators through a linking table.
+);
 
-            RETURN NEW;
-        END IF;
-    END;
-    $$ LANGUAGE plpgsql;
+CREATE TABLE WorkshopFacilitators (
+    WorkshopID INT,
+    FacilitatorID INT,
+    FOREIGN KEY (WorkshopID) REFERENCES Workshop(WorkshopID),
+    FOREIGN KEY (FacilitatorID) REFERENCES Person(PersonID),
+    PRIMARY KEY (WorkshopID, FacilitatorID)
+    -- Each record represents a facilitator for a workshop.
+    -- A workshop can have multiple facilitators, and a person can facilitate multiple workshops.
+);
 
-    CREATE TRIGGER trg_adjust_submission_status
-    BEFORE UPDATE OF status ON Submissions
-    FOR EACH ROW
-    EXECUTE FUNCTION fn_adjust_submission_status();
 
---Check if accepted ant be submitted again
-    CREATE OR REPLACE FUNCTION fn_prevent_duplicate_accepted_submissions() RETURNS TRIGGER AS $$
-    BEGIN
-        -- Check for an existing 'Accepted' submission with the same title and type
-        IF EXISTS (
-            SELECT 1
-            FROM Submissions
-            WHERE title = NEW.title
-            AND submission_type = NEW.submission_type
-            AND status = 'Accepted'
-            AND submission_id != NEW.submission_id -- Exclude self for updates
-        ) THEN
-            RAISE EXCEPTION 'An accepted submission with the same title and type already exists.';
-        END IF;
+CREATE TABLE Attendee (
+    AttendeeID INT PRIMARY KEY,
+    PersonID INT,
+    ConferenceID INT,
+    IsStudent BOOLEAN,
+    Fee DECIMAL(10, 2), -- Assuming fees are monetary values with 2 decimal places.
+    FOREIGN KEY (PersonID) REFERENCES Person(PersonID),
+    FOREIGN KEY (ConferenceID) REFERENCES Conference(ConferenceID)
+    -- Constraint: At least one author per accepted submission must be registered.
+    -- This complex constraint is difficult to enforce directly in the schema.
 
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
+    -- Assumption: Attendees are conference participants, potentially benefiting from student discounts.
+    -- Constraint: At least one author of an accepted submission must register as an attendee.
+);
 
-    CREATE TRIGGER trg_prevent_duplicate_accepted_submissions
-    BEFORE INSERT OR UPDATE ON Submissions
-    FOR EACH ROW
-    EXECUTE FUNCTION fn_prevent_duplicate_accepted_submissions();
 
---c) Presentation
---Paper presentations must have unique timestamps
-    CREATE OR REPLACE FUNCTION fn_check_presentation_timing() RETURNS TRIGGER AS $$
-    DECLARE
-        submission_type VARCHAR(50);
-    BEGIN
-        -- Determine if the submission is a paper or poster
-        SELECT submission_type INTO submission_type FROM Submissions WHERE submission_id = NEW.submission_id;
-        
-        IF submission_type = 'Paper' THEN
-            -- Check for overlapping paper presentations
-            IF EXISTS (
-                SELECT 1 FROM Presentations
-                JOIN Submissions ON Presentations.submission_id = Submissions.submission_id
-                WHERE Submissions.submission_type = 'Paper'
-                AND Presentations.presented_during = NEW.presented_during
-                AND ((NEW.start_time < Presentations.end_time AND NEW.start_time >= Presentations.start_time) OR
-                    (NEW.end_time > Presentations.start_time AND NEW.end_time <= Presentations.end_time) OR
-                    (NEW.start_time <= Presentations.start_time AND NEW.end_time >= Presentations.end_time))
-                AND Presentations.presentation_id != NEW.presentation_id -- Exclude self for updates
-            ) THEN
-                RAISE EXCEPTION 'Overlapping paper presentations in the same session are not allowed.';
-            END IF;
-        END IF;
-        
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
+CREATE TABLE WorkshopRegistration (
+    AttendeeID INT,
+    WorkshopID INT,
+    FeePaid BOOLEAN,
+    FOREIGN KEY (AttendeeID) REFERENCES Attendee(AttendeeID),
+    FOREIGN KEY (WorkshopID) REFERENCES Workshop(WorkshopID),
+    PRIMARY KEY (AttendeeID, WorkshopID)
+    -- Assumption: Attendees can register for multiple workshops.
+);
 
-    CREATE TRIGGER trg_check_presentation_timing
-    BEFORE INSERT OR UPDATE ON Presentations
-    FOR EACH ROW
-    EXECUTE FUNCTION fn_check_presentation_timing();
-
---making sure that there are not scheduling conflicts for authors
-    CREATE OR REPLACE FUNCTION fn_check_author_presentation_overlap() RETURNS TRIGGER AS $$
-    DECLARE
-        v_paper_authors INT;
-        v_poster_authors INT;
-        v_author_id INT;
-    BEGIN
-        -- Iterate through each author of the new/updated presentation's submission
-        FOR v_author_id IN SELECT author_id FROM Author_Submission WHERE submission_id = NEW.submission_id LOOP
-            
-            -- Check if this author is involved in another presentation at the same time
-            IF EXISTS (
-                SELECT 1 FROM Presentations
-                JOIN Author_Submission ON Presentations.submission_id = Author_Submission.submission_id
-                WHERE Author_Submission.author_id = v_author_id
-                AND Presentations.start_time = NEW.start_time
-                AND Presentations.presentation_id != NEW.presentation_id -- Avoid self-comparison for updates
-            ) THEN
-                -- Count authors for both the new/updated submission and the overlapping one
-                SELECT COUNT(*) INTO v_paper_authors FROM Author_Submission WHERE submission_id = NEW.submission_id;
-                SELECT COUNT(*) INTO v_poster_authors FROM Author_Submission
-                JOIN Presentations ON Author_Submission.submission_id = Presentations.submission_id
-                WHERE Presentations.start_time = NEW.start_time
-                AND Author_Submission.author_id = v_author_id;
-
-                -- If there's overlap and either the new or existing presentation has only one author, raise exception
-                IF v_paper_authors = 1 OR v_poster_authors = 1 THEN
-                    RAISE EXCEPTION 'An author cannot have two presentations at the same time unless they are co-authored.';
-                END IF;
-            END IF;
-        END LOOP;
-
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-
-    CREATE TRIGGER trg_check_author_presentation_overlap
-    BEFORE INSERT OR UPDATE ON Presentations
-    FOR EACH ROW
-    EXECUTE FUNCTION fn_check_author_presentation_overlap();
-
+CREATE TABLE ConferenceCommittee (
+    CommitteeID INT PRIMARY KEY,
+    ConferenceID INT,
+    MemberID INT,
+    Role VARCHAR(255),
+    FOREIGN KEY (ConferenceID) REFERENCES Conference(ConferenceID),
+    FOREIGN KEY (MemberID) REFERENCES Person(PersonID)
+    -- Constraint: Chairs must have been on the committee twice before.
+    -- This requirement cannot be directly enforced in the schema without historical data checks or a trigger.
+    -- Assumption: The conference committee is responsible for organizing the conference, with roles including chairs and members.
+    -- Constraint: Chairs are required to have prior committee experience, though this must be validated outside the database structure.
+);
