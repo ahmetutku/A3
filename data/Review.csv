@@ -56,3 +56,6 @@ ReviewID,SubmissionID,ReviewerID,Recommendation,HasConflict
 55,19,4,Accept,False
 56,19,5,Accept,False
 57,19,6,Accept,False
+58,20,4,Accept,False
+59,20,5,Accept,False
+60,20,6,Accept,False
