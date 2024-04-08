@@ -98,8 +98,6 @@ CREATE TABLE Submission (
     Title TEXT,
     Type TEXT,
     Decision TEXT,
-    SessionID INT NULL,
-    FOREIGN KEY (SessionID) REFERENCES Session(SessionID),
     CHECK (Type IN ('Paper', 'Poster')),
     CHECK (Decision IN ('Pending', 'Accept', 'Reject'))
     -- Assumption: Submissions are proposals for conference content, reviewed and either accepted or rejected.
