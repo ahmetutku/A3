@@ -1,5 +1,5 @@
 SET SEARCH_PATH TO A3Conference;
-DROP TABLE IF EXISTS q3 cascade;
+DROP TABLE IF EXISTS q1 cascade;
 
 DROP VIEW IF EXISTS SubmissionCounts CASCADE;
 
