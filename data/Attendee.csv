@@ -30,3 +30,7 @@ AttendeeID,PersonID,ConferenceID,IsStudent,Fee
 29,3,18,False,10
 30,3,19,False,10
 31,2,13,True,2
+32,7,14,False,10
+33,7,15,False,10
+34,7,16,False,10
+35,7,22,False,10
