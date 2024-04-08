@@ -2,7 +2,7 @@ WITH ConferenceSubmissions AS (
     SELECT
         c.ConferenceID,
         c.StartDate,
-        COUNT(*) FILTER (WHERE s.Decision = 'Accept') AS AcceptedSubmissions,
+        SUM(CASE WHEN s.Decision = 'Accept' THEN 1 ELSE 0 END) AS AcceptedSubmissions,
         COUNT(*) AS TotalSubmissions
     FROM
         A3Conference.Conference c
