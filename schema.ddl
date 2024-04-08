@@ -141,11 +141,11 @@ CREATE TABLE Review (
 
 
 CREATE TABLE Presentation (
-    PresentationID INT PRIMARY KEY, -- Unique identifier for each presentation.
     SubmissionID INT, -- Links the presentation to a specific submission (paper or poster).
     SessionID INT, -- Indicates which session the presentation belongs to.
     StartTime TIMESTAMP, -- Specific start time of the presentation within the session.
     EndTime TIMESTAMP, -- Specific end time of the presentation within the session.
+    PRIMARY KEY (SubmissionID, SessionID),
     FOREIGN KEY (SubmissionID) REFERENCES Submission(SubmissionID),
     FOREIGN KEY (SessionID) REFERENCES Session(SessionID),
     UNIQUE (SessionID, StartTime), -- Ensures no overlapping presentations within the same session.
