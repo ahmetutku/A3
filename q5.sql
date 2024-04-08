@@ -1,40 +1,31 @@
-WITH SessionCounts AS (
+WITH SessionInfo AS (
     SELECT
-        C.ConferenceID,
-        C.Name AS ConferenceName,
-        C.StartDate,
-        Se.Type AS SessionType,
-        COUNT(P.SubmissionID) AS SubmissionCount
+        c.ConferenceID,
+        c.Name AS ConferenceName,
+        s.SessionID,
+        s.Type AS SessionType,
+        COUNT(p.SubmissionID) AS SubmissionCount
     FROM
-        A3Conference.Conference C
+        A3Conference.Conference c
     JOIN
-        A3Conference.Session Se ON C.ConferenceID = Se.ConferenceID
+        A3Conference.Session s ON c.ConferenceID = s.ConferenceID
     JOIN
-        A3Conference.Presentation P ON Se.SessionID = P.SessionID
+        A3Conference.Presentation p ON s.SessionID = p.SessionID
     JOIN
-        A3Conference.Submission S ON P.SubmissionID = S.SubmissionID AND S.Decision = 'Accept'
+        A3Conference.Submission sub ON p.SubmissionID = sub.SubmissionID
+    WHERE
+        sub.Decision = 'Accept'
     GROUP BY
-        C.ConferenceID, C.Name, C.StartDate, Se.Type
-),
-AverageCounts AS (
-    SELECT
-        ConferenceID,
-        ConferenceName,
-        StartDate,
-        AVG(CASE WHEN SessionType = 'Paper' THEN SubmissionCount ELSE NULL END) AS AvgPapersPerSession,
-        AVG(CASE WHEN SessionType = 'Poster' THEN SubmissionCount ELSE NULL END) AS AvgPostersPerSession
-    FROM
-        SessionCounts
-    GROUP BY
-        ConferenceID, ConferenceName, StartDate
+        c.ConferenceID, c.Name, s.SessionID, s.Type
 )
 SELECT
     ConferenceID,
     ConferenceName,
-    StartDate,
-    COALESCE(AvgPapersPerSession, 0) AS AvgPapersPerSession,
-    COALESCE(AvgPostersPerSession, 0) AS AvgPostersPerSession
+    AVG(SubmissionCount) FILTER (WHERE SessionType = 'Paper') AS AvgPapersPerSession,
+    AVG(SubmissionCount) FILTER (WHERE SessionType = 'Poster') AS AvgPostersPerSession
 FROM
-    AverageCounts
+    SessionInfo
+GROUP BY
+    ConferenceID, ConferenceName
 ORDER BY
-    StartDate, ConferenceName;
+    ConferenceID;

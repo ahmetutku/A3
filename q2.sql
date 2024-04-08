@@ -1,15 +1,12 @@
 SELECT
-    P.PersonID,
-    P.FullName,
-    COUNT(DISTINCT A.ConferenceID) AS ConferencesAttended
+    p.PersonID,
+    p.FullName,
+    COUNT(DISTINCT a.ConferenceID) AS ConferencesAttended
 FROM
-    A3Conference.Person P
+    A3Conference.Person p
 JOIN
-    A3Conference.Attendee A ON P.PersonID = A.PersonID
-JOIN
-    A3Conference.Conference C ON A.ConferenceID = C.ConferenceID
+    A3Conference.Attendee a ON p.PersonID = a.PersonID
 GROUP BY
-    P.PersonID,
-    P.FullName
+    p.PersonID, p.FullName
 ORDER BY
-    ConferencesAttended DESC, P.FullName;
+    ConferencesAttended DESC, p.FullName;
