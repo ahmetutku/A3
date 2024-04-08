@@ -1,25 +1,25 @@
+WITH ConferenceSubmissions AS (
+    SELECT
+        c.ConferenceID,
+        c.StartDate,
+        COUNT(*) FILTER (WHERE s.Decision = 'Accept') AS AcceptedSubmissions,
+        COUNT(*) AS TotalSubmissions
+    FROM
+        A3Conference.Conference c
+    JOIN
+        A3Conference.Session ses ON c.ConferenceID = ses.ConferenceID
+    JOIN
+        A3Conference.Presentation p ON ses.SessionID = p.SessionID
+    JOIN
+        A3Conference.Submission s ON p.SubmissionID = s.SubmissionID
+    GROUP BY
+        c.ConferenceID, c.StartDate
+)
 SELECT
-    C.ConferenceID,
-    C.Name AS ConferenceName,
-    EXTRACT(YEAR FROM C.StartDate) AS ConferenceYear,
-    COUNT(S.SubmissionID) AS TotalSubmissions,
-    COUNT(CASE WHEN S.Decision = 'Accept' THEN 1 END) AS AcceptedSubmissions,
-    ROUND(
-        (COUNT(CASE WHEN S.Decision = 'Accept' THEN 1 END)::DECIMAL / COUNT(S.SubmissionID)) * 100,
-        2
-    ) AS PercentageAccepted
+    ConferenceID,
+    StartDate AS ConferenceYear,
+    ROUND((AcceptedSubmissions::DECIMAL / TotalSubmissions) * 100, 2) AS PercentageAccepted
 FROM
-    A3Conference.Conference C
-JOIN
-    A3Conference.Session Se ON C.ConferenceID = Se.ConferenceID
-JOIN
-    A3Conference.Presentation P ON Se.SessionID = P.SessionID
-JOIN
-    A3Conference.Submission S ON P.SubmissionID = S.SubmissionID
-GROUP BY
-    C.ConferenceID,
-    C.Name,
-    ConferenceYear
+    ConferenceSubmissions
 ORDER BY
-    C.ConferenceID,
-    ConferenceYear;
+    StartDate, ConferenceID;
